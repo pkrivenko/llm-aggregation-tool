@@ -367,6 +367,19 @@ If you cannot perform a task properly for ANY reason:
 - ❌ Silently fall back to alternatives without informing user
 - ❌ Proceed with partial setup without flagging missing pieces
 
+### After Adding New Features
+
+**ALWAYS update documentation after implementing new features:**
+
+1. Update `README.md` with:
+   - Feature description and how it works
+   - Usage examples
+   - Any new configuration options
+
+2. If the feature involved solving a notable challenge, add it to the "Challenges and Resolutions" section in this file (CLAUDE.md)
+
+3. Commit documentation updates separately or together with the feature
+
 ### After Code Changes
 
 **ALWAYS restart the application after making any code changes:**
