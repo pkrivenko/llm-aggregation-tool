@@ -1,0 +1,204 @@
+**Pavel Krivenko**
+
+[pavel.krivenko@gmail.com](mailto:pavel.krivenko@gmail.com) • (408) 707-2123 • [www.pkrivenko.com](http://www.pkrivenko.com) • [www.linkedin.com/in/pkrivenko](http://www.linkedin.com/in/pkrivenko/)
+
+## SUMMARY
+
+**Economist with 12 years of experience in Finance, Macroeconomics, and Real Estate research, teaching, and policy impact**
+
+·   Published research on asset pricing and predictive modeling of U.S. housing & mortgage markets, unemployment, and interest rates
+
+·   Developed and taught Real Estate Finance, Investment, and Capital Markets to 1000+ students, earning a teaching excellence award
+
+·   Founded an education business helping 200+ students succeed
+
+·   Advised Central Bank and Impacted Tax, Regulation, and Education policies in Russia
+
+  
+## EDUCATION
+
+**Ph.D. in Economics, Stanford University**, **2018**
+
+Focus: Financial Economics, Macroeconomics, Quantitative Finance, Dynamic Asset Pricing, Structural Estimation, ML
+
+M.A. in Economics (Cum Laude): New Economic School (GPA 4.97/5, Ranking 2 out of 87), 2011
+
+B.A. in Economics (Cum Laude): Higher School of Economics (GPA 5/5, Ranking 2 out of 185), 2008
+
+**Certifications**
+
+·   Applied Data Science Program: Leveraging AI for Effective Decision-Making, 12-week program, MIT, 2024
+
+·   Applied Machine Learning, 24-week program, Columbia, 2023-24
+
+  
+## EXPERIENCE
+
+**Assistant Professor** at Zicklin School of Business, Baruch College, CUNY          2018 – Present
+
+·   Published in top field journals and presented at 30 seminars and conferences across 14 universities, 6 central banks, and 9 countries
+
+·   Led three conference sections and organized one
+
+·   Developed and taught core courses in Real Estate Finance, Investment, and Capital Markets to 1150+ students
+
+o  Created project assignments on AI in Real Estate, advised 10 student groups, led a Shark Tank type presentation panel
+
+o  Achieved highest evaluations across all 10 metrics measured, received Teaching Excellence Award
+
+·   Increased enrollment by 82% by organizing and leading 21 events for prospective students, MBA program update, and ESG initiative
+
+·   Designed advanced problems for the International Economics Olympiad and the Russian Economics Olympiad
+
+**Editorial Board Member** at Central Bank of Russia                                      2019-2022
+
+·   Contributed to an 85% increase in research publications by advising on Economics, Econometrics, ML and Data Science
+
+**Research and Course Assistant** at Stanford University                                 2012-2018
+
+·   Developed a novel algorithm and a MATLAB package to solve, estimate, and simulate DSGE models with any expectations
+
+·   Led sections on Advanced courses in Microeconomics, Macroeconomics, Financial Economics, Financial Markets and Institutions
+
+**Senior Economist**, The Center for Program and Policy Evaluation (economic and policy consulting)                                                                                             2008-2012
+
+·   Designed a system of metrics for performance evaluation, implemented by the Ministry of Education
+
+·   Identified a tax break that increases tax revenue by promoting innovation, implemented by the Ministry of Finance
+
+·   Estimated a 70% compliance cost reduction from deregulation in the metal industry, implemented by the Ministry of Industry and Trade
+
+·   Estimated a 30% boost in telecom investments from deregulation
+
+**Research Economist** at New Economic School & Moscow School of Management Skolkovo                                                                                                         2008-2012
+
+·   Designed and implemented a survey of 1058 exporters, identified key growth drivers and obstacles, informed policymakers
+
+·   Led MA and MBA sections in Finance, Econometrics, Macro, International Econ, Trade, Political Econ and Inequality
+
+**Founder, Tutor, and Mentor** at [OlympEcon.com](https://www.olympecon.com/)                                        2007-2018
+
+·   Achieved $130k revenue over 8 months in 2011/12, averaging 60 billed hours per week
+
+·   Taught and mentored over 200 high school, B.A., M.A., MBA, and PhD students in Russia, the US, and the UK
+
+·   Pioneered online tutoring and mentorship programs for talented high school students to win fellowships to top universities
+
+·   Designed a fast-track program covering the complete Econ and Finance curriculum up to the MS level in under one year
+
+·   100% success rate among 30 students in the full program: all won fellowships to top schools through Econ & Finance contests
+
+·   Published 49 problems that teach advanced topics in Econ and Finance by practice (available at [iloveeconomics.ru](https://iloveeconomics.ru/zadachi-avtory/pavel-krivenko))
+
+**Research Fellow, Lecturer, Mentor, and Course Assistant** at Higher School of Economics                                                                                                      2007-2012
+
+·   Published 7 research papers, won 11 awards and grants
+
+·   Primary Advisor on 3 BA and 2 MA theses, all awarded top grades
+
+·   Developed and taught Advanced Macroeconomics with MATLAB to 2nd year applied math students, while being a 4th year undergrad
+
+·   Led sections for 6 professors and mentored 60 students continuously through a 2-year long Macroeconomics sequence
+
+**Research Intern**, Economic Expert Group (independent think tank)             2007-2008
+
+·   Developed, estimated, and published multi-industry structural models of 6 oil-exporting countries for forecasting and policy evaluation
+
+  
+## TECHNICAL SKILLS
+
+**Programming Languages**: Python, SQL, MATLAB, Dynare, Julia, C++, CUDA, Java, Stata, SAS; **Cloud Platform**: AWS
+
+**Python Packages**: ML/DL (Scikit-learn, TensorFlow, PyTorch); Data (Pandas, NumPy, SciPy, Dask); LLM APIs (OpenAI, Anthropic etc)
+
+**Data Skills:** Causal Methods (DiD, IV, Synthetic Control, Propensity Score Matching, A/B Testing); Econometrics (Time Series, Panel Data, GMM, Financial Econometrics); ML/DL (Classification, Clustering, Decision Trees, Neural Networks, NLP); Structural Methods (Monte Carlo, Optimization, MLE, Bayesian); RL, Generative AI
+
+## RESEARCH
+
+[**The Role of Moving Shocks, Unemployment, and Policy in Understanding Housing Bust**](https://www.sciencedirect.com/science/article/abs/pii/S0378426623001395)**,** **_Journal of Banking and Finance_**, 2023
+
+·   Developed a state-of-the-art model of household choice estimated with U.S. panel data, surveys, and macroeconomic indicators
+
+·   Accurately predicted house prices and household spending, saving, borrowing (mortgages, credit cards, home equity loans), defaults, housing, and moving decisions during financial crisis using pre-crisis data
+
+·   Utilized advanced techniques (ML, AWS, GPU computing, CUDA, MATLAB) to solve and simulate a dynamic stochastic model
+
+·   Created a labor market sub-model predicting job postings, layoffs, unemployment, and income dynamics
+
+·   Used survey data to predict age-specific moving rates, crucial for modeling housing market dynamics
+
+·   Conducted cost-benefit analysis of mortgage policies, offering optimized solutions for better outcomes at reduced costs
+
+[**Asset Prices in a Labor Search Model with Confidence Shocks**](https://www.sciencedirect.com/science/article/pii/S0165188922002676?dgcid=author)**_, Journal of Economic Dynamics and Control_**, 2023
+
+·   Built a dynamic model linking U.S. labor and financial markets, incorporating uncertainty beyond traditional risk
+
+·   Used the Survey of Professional Forecasters, macro, stock and bond data to estimate the model using GMM in MATLAB
+
+·   Discovered that forecasters' confidence predicts stock returns & volatility, bond term structure, unemployment, and job postings
+
+·   Suggested a new mechanism explaining why unemployment predicts stock returns and dividends
+
+[**The Effect of the _Tax Cuts and Jobs Act_ on the Housing Market**](https://www.dropbox.com/scl/fi/0h3dkonumh0bmo8icqilw/TCJA.pdf?rlkey=8e08yfazdmp5gny33srqntvtv&dl=0)**, R&R _Journal of Public Economics_** (with [Kamila Sommer](https://www.google.com/url?q=https%3A%2F%2Fwww.federalreserve.gov%2Feconres%2Fkamila-sommer.htm&sa=D&sntz=1&usg=AFQjCNE3FsUfj0syFUEINvE1dloByKZthQhttps://www.google.com/url?q=https%3A%2F%2Fwww.federalreserve.gov%2Feconres%2Fkamila-sommer.htm&sa=D&sntz=1&usg=AFQjCNE3FsUfj0syFUEINvE1dloByKZthQ) and [Paul Sullivan](http://www.google.com/url?q=http%3A%2F%2Fwww-personal.umich.edu%2F~paulsull%2Fresearch.html&sa=D&sntz=1&usg=AFQjCNG-aKbn1XPyGd9ojO-0_5s4yTX4ow))
+
+·   Estimated the 2018 tax reform's impact on housing prices, homeownership rates, mortgage debt, consumer spending, and welfare
+
+·   Built an equilibrium model of the U.S. housing market with detailed household financial decisions, including filing itemized tax returns
+
+[**Uncertainty or frictions? A quantitative model of scarce safe assets**](https://www.dropbox.com/scl/fi/5hpvoicimmb3srq1fmjb3/UncFrictions2023.pdf?rlkey=f18mr3qcgakblpp85lft0lzw5&dl=0) (with [Cosmin Ilut](https://sites.google.com/site/cosminilut/) and [Martin Schneider](https://web.stanford.edu/~schneidr/))
+
+·   Assessed how uncertainty and credit regulations impact financial trends using U.S. household balance sheets and macro data
+
+·   Documented new empirical findings on stock and bond returns and corporate leverage
+
+·   Built a dynamic general equilibrium model with heterogeneous beliefs and credit market frictions
+
+·   Developed a novel algorithm and a MATLAB package to solve, estimate, and simulate DSGE models with any expectations
+
+**Student Loans, Housing, and Wealth Accumulation** (with [Alvaro Mezza](https://www.google.com/url?q=https%3A%2F%2Fwww.federalreserve.gov%2Feconres%2Falvaro-mezza.htm&sa=D&sntz=1&usg=AFQjCNH9OpDgLW_3uGHvz_uL2v0ENidK5g), [Kamila Sommer](https://www.google.com/url?q=https%3A%2F%2Fwww.federalreserve.gov%2Feconres%2Fkamila-sommer.htm&sa=D&sntz=1&usg=AFQjCNE3FsUfj0syFUEINvE1dloByKZthQhttps://www.google.com/url?q=https%3A%2F%2Fwww.federalreserve.gov%2Feconres%2Fkamila-sommer.htm&sa=D&sntz=1&usg=AFQjCNE3FsUfj0syFUEINvE1dloByKZthQ), and [Paul Sullivan](http://www.google.com/url?q=http%3A%2F%2Fwww-personal.umich.edu%2F~paulsull%2Fresearch.html&sa=D&sntz=1&usg=AFQjCNG-aKbn1XPyGd9ojO-0_5s4yTX4ow))
+
+·   Developed a model to predict student loan performance, housing and portfolio choice over life cycle and in response to student loan policies
+
+**Reinforcement Learning, Approximate Dynamic Programming,** **and Asset Pricing in DSGE models** (with [Evgeni Drynkin](https://www.gsb.stanford.edu/programs/phd/academic-experience/students/evgeni-drynkin))
+
+·   Developed a novel method of solving heterogeneous-agent models with aggregate risk affecting stock and bond prices
+
+·   Implemented reinforcement learning and approximate dynamic programming with flexible function approximation techniques (lasso, random forest, nearest neighbor and kernel estimators) to handle complex behaviors in large state space
+
+[**Trade Policy during Financial Crises**](https://www.dropbox.com/s/8ar2mx5q0de9bfa/FinCrisisTrade.pdf?dl=0)
+
+·   Developed a menu-auction trade policy model with financial frictions (liquidity cost shocks) and unemployment
+
+·   Model accurately reflects empirical tariff patterns across industries during economic cycles
+
+·   Provided recommendations on improving trade policies during financial crises
+
+
+## GRANTS, FELLOWSHIPS, AWARDS
+
+·   Teaching Excellence Award, Zicklin School of Business, Baruch College, CUNY                                                                   2023
+
+·   2 x Professional Staff Congress Research Award, $6k, CUNY                                                                                                2019-2024
+
+·   GRTI Equipment Grant for GPU Workstation, $50k, City University of New York                                                                   2019-2020
+
+·   AWS Cloud Computing Grant, $5k, Stanford University                                                                                                       2017-2018
+
+·   E.S. Shaw and B.F. Haley Fellowship for Economics, $10k, Stanford Institute for Economic and Policy Research                  2017-2018
+
+·   Graduate Fellowship, $56k, Department of Economics, Stanford University                                                                         2012-2013
+
+·   2 x Best Student in Field (Advanced Macroeconomics, Economic Policy), New Economic School                                                     2011
+
+·   8 x Best Paper Award on 5 different papers at conferences, research contests, and the Best Bachelor Thesis award                  2006-2011
+
+·   3 x Special Academic and Research Grant (awarded to 3 students out of approx. 200 Econ students at HSE)                2007-2010
+
+·   Winner, Economics Olympiad (the main country-wide Econ contest, 6th of 250 Final Stage, of 10,000+ First Stage)                    2004
+
+  
+## SUMMER SCHOOLS
+
+·   Behavioral Finance, Yale University, 2015
+
+·   Macroeconomics and Finance, Princeton University, 2014

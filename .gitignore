@@ -1,0 +1,54 @@
+# API Keys - NEVER commit these
+*APIKey*.txt
+*api_key*.txt
+*.key
+.env
+.env.*
+secrets/
+credentials/
+
+# Google API keys
+GoogleAPIKey.txt
+google_api_key.txt
+GOOGLE_API_KEY.txt
+
+# OpenRouter keys
+OpenRouterAPIKey.txt
+openrouter_api_key.txt
+
+# OpenAI keys
+OpenAIAPIKey.txt
+openai_api_key.txt
+OPENAI_API_KEY.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Benchmark data (large files)
+*.jsonl
+
+# Test outputs
+runs/
+*_out/
+
+# Jupyter
+.ipynb_checkpoints/
