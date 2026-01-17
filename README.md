@@ -467,9 +467,48 @@ Each run produces:
 | Type | Encoding | How Processed |
 |------|----------|---------------|
 | Text (.txt) | UTF-8 | Direct text inclusion |
-| PDF (.pdf) | Text + Image | Extracted text + first page rendered as image |
-| Image (.jpg, .png) | Multimodal | Native image_url format |
+| PDF (.pdf) | Configurable | Multiple modes available (see below) |
+| Image (.jpg, .png) | Multimodal | Native image format with quality options |
 | Binary | base64+zlib | Compressed base64 (limited support) |
+
+### PDF Handling Modes
+
+When uploading PDF files, you can choose how to send them to the LLM. Select one or more modes:
+
+| Mode | Description | Best For |
+|------|-------------|----------|
+| **Send PDF as-is** (default) | Native PDF upload via base64 | Models with PDF support (Claude, Gemini) |
+| **Extract text only** | Extract text using PyMuPDF | Text-heavy PDFs, fastest processing |
+| **Send as images** | Render all pages as PNG images | Visual content, charts, diagrams |
+
+**Combining modes:** You can select multiple modes to send different representations of the same PDF. This can improve accuracy when a document has both text and visual elements.
+
+**Provider support for native PDF:**
+
+| Provider | Native PDF Support | Notes |
+|----------|-------------------|-------|
+| Anthropic (Claude) | ✅ Full support | Best accuracy with native PDF |
+| Google (Gemini) | ✅ Full support | Requires temperature > 0 |
+| OpenAI (GPT) | ✅ Full support | Uses Files API format internally |
+
+### Image Quality Options
+
+For both regular images and PDF-to-image conversion, you can select the output quality:
+
+| Quality | Max Dimension | Use Case |
+|---------|---------------|----------|
+| **Original** | No resize | Maximum fidelity, highest token cost |
+| **Maximum (2048px)** | 2048px | High detail needs |
+| **High (1536px)** | 1536px | Good balance of detail and cost |
+| **Standard (1024px)** | 1024px | General use |
+| **Draft (512px)** | 512px | Fast processing, lower cost |
+
+Images are resized proportionally (preserving aspect ratio) using high-quality LANCZOS resampling.
+
+**Benchmark findings:**
+- For text-heavy PDFs, lower resolutions (512-1024px) often perform as well as higher ones
+- Visual content (charts, diagrams) benefits from higher resolutions
+- Draft quality can be 2x faster with similar accuracy on text documents
 
 ### Document Size Limit
 
@@ -516,7 +555,8 @@ Q2 Sales Report:
    - For images, ensure using multimodal format (automatic)
 
 2. **PDF answers are wrong/hallucinated**
-   - PDFs are processed with text extraction + image render
+   - Try different PDF modes: "Send as-is" works best for most models
+   - For Gemini models, ensure temperature > 0 (0.7 recommended)
    - Check if PDF has extractable text (not scanned image)
 
 3. **Budget exhausted (skipped_budget status)**
@@ -526,6 +566,28 @@ Q2 Sales Report:
 4. **Rate limiting / 429 errors**
    - Reduce `max_concurrency`
    - Add retries with backoff
+
+5. **"Unsupported value: temperature" error (GPT-5-nano)**
+   - GPT-5-nano only supports temperature=1.0
+   - Leave temperature field empty for this model
+
+### Model-Specific Notes
+
+| Model | Temperature | PDF Support | Notes |
+|-------|-------------|-------------|-------|
+| Claude Haiku 4.5 | Any | Native | Best PDF accuracy (95%+) |
+| Claude Sonnet/Opus | Any | Native | Excellent accuracy |
+| Gemini 3 Flash/Pro | **Must be > 0** | Native | Use 0.7; temp=0 causes issues with PDFs |
+| GPT-5-nano | **Only 1.0** | Native | Don't set temperature; limited accuracy |
+| GPT-5-mini/5.2 | Any | Native | Good accuracy |
+
+**Benchmark results (11-question PDF test):**
+
+| Model | Text Mode | PDF Native | Images (1024px) |
+|-------|-----------|------------|-----------------|
+| Claude Haiku 4.5 | 96% | 95% | 75% |
+| Gemini 3 Flash | 91% | 91% | 90% |
+| GPT-5-nano | N/A | 64% | 22-58% |
 
 ### Debug Mode
 
