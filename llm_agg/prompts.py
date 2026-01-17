@@ -27,8 +27,10 @@ def build_doc_block(doc_info: dict) -> Union[str, dict]:
             "type": "pdf",
             "doc_id": doc_id,
             "filename": filename,
-            "text": content,
-            "image": doc_info.get("pdf_image"),
+            "mime": mime,
+            "pdf_raw": doc_info.get("pdf_raw"),      # base64 raw PDF
+            "pdf_text": doc_info.get("pdf_text"),    # extracted text
+            "pdf_pages": doc_info.get("pdf_pages"),  # list of base64 page images
         }
 
     return f"[DOCUMENT]\ndoc_id: {doc_id}\nfilename: {filename}\nmime: {mime}\nencoding: {encoding}\ncontent: {content}\n[/DOCUMENT]"
@@ -42,24 +44,60 @@ def build_doer_user_message(question: str, doc_block: Optional[Union[str, dict]]
         ]
 
     if doc_block and isinstance(doc_block, dict) and doc_block.get("type") == "pdf":
-        # PDF: send both extracted text and first page image
-        text_content = f"""QUESTION: {question}
+        # Build message with all available PDF representations
+        parts = []
+        text_intro = f"QUESTION: {question}\n\n[PDF DOCUMENT: {doc_block['filename']}]"
 
-[PDF DOCUMENT: {doc_block['filename']}]
-The following is extracted text from the PDF. An image of the first page is also provided for layout reference.
+        # Add extracted text if available
+        if doc_block.get("pdf_text"):
+            text_intro += f"\n\n--- EXTRACTED TEXT ---\n{doc_block['pdf_text']}\n--- END EXTRACTED TEXT ---"
 
---- EXTRACTED TEXT ---
-{doc_block['text']}
---- END EXTRACTED TEXT ---"""
-        parts = [{"type": "text", "text": text_content}]
-        if doc_block.get("image"):
-            parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{doc_block['image']}"}})
-        return parts
+        parts.append({"type": "text", "text": text_intro})
+
+        # Add raw PDF as document if available
+        if doc_block.get("pdf_raw"):
+            parts.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": doc_block["pdf_raw"]
+                }
+            })
+
+        # Add page images if available
+        if doc_block.get("pdf_pages"):
+            for i, page_b64 in enumerate(doc_block["pdf_pages"]):
+                parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{page_b64}"}
+                })
+
+        return parts if len(parts) > 1 else parts[0]["text"]
 
     msg = f"QUESTION: {question}"
     if doc_block:
         msg += f"\n\n{doc_block}"
     return msg
+
+
+def _add_pdf_parts(doc_block: dict, parts: list) -> None:
+    """Add PDF representations (raw, pages) to message parts list."""
+    if doc_block.get("pdf_raw"):
+        parts.append({
+            "type": "document",
+            "source": {
+                "type": "base64",
+                "media_type": "application/pdf",
+                "data": doc_block["pdf_raw"]
+            }
+        })
+    if doc_block.get("pdf_pages"):
+        for page_b64 in doc_block["pdf_pages"]:
+            parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{page_b64}"}
+            })
 
 
 def build_judge_user_message(
@@ -77,7 +115,9 @@ def build_judge_user_message(
     elif is_image:
         text_parts.append(f"[DOCUMENT: {doc_block['filename']}]")
     elif is_pdf:
-        text_parts.append(f"[PDF DOCUMENT: {doc_block['filename']}]\n--- EXTRACTED TEXT ---\n{doc_block['text']}\n--- END EXTRACTED TEXT ---")
+        text_parts.append(f"[PDF DOCUMENT: {doc_block['filename']}]")
+        if doc_block.get("pdf_text"):
+            text_parts.append(f"--- EXTRACTED TEXT ---\n{doc_block['pdf_text']}\n--- END EXTRACTED TEXT ---")
 
     if doer_outputs:
         text_parts.append("DOER RESPONSES:")
@@ -91,11 +131,10 @@ def build_judge_user_message(
             {"type": "text", "text": "\n\n".join(text_parts)},
             {"type": "image_url", "image_url": {"url": f"data:{doc_block['mime']};base64,{doc_block['content']}"}}
         ]
-    if is_pdf and doc_block.get("image"):
-        return [
-            {"type": "text", "text": "\n\n".join(text_parts)},
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{doc_block['image']}"}}
-        ]
+    if is_pdf:
+        parts = [{"type": "text", "text": "\n\n".join(text_parts)}]
+        _add_pdf_parts(doc_block, parts)
+        return parts if len(parts) > 1 else parts[0]["text"]
     return "\n\n".join(text_parts)
 
 
@@ -115,7 +154,9 @@ def build_final_user_message(
     elif is_image:
         text_parts.append(f"[DOCUMENT: {doc_block['filename']}]")
     elif is_pdf:
-        text_parts.append(f"[PDF DOCUMENT: {doc_block['filename']}]\n--- EXTRACTED TEXT ---\n{doc_block['text']}\n--- END EXTRACTED TEXT ---")
+        text_parts.append(f"[PDF DOCUMENT: {doc_block['filename']}]")
+        if doc_block.get("pdf_text"):
+            text_parts.append(f"--- EXTRACTED TEXT ---\n{doc_block['pdf_text']}\n--- END EXTRACTED TEXT ---")
 
     if doer_outputs:
         text_parts.append("DOER RESPONSES:")
@@ -134,11 +175,10 @@ def build_final_user_message(
             {"type": "text", "text": "\n\n".join(text_parts)},
             {"type": "image_url", "image_url": {"url": f"data:{doc_block['mime']};base64,{doc_block['content']}"}}
         ]
-    if is_pdf and doc_block.get("image"):
-        return [
-            {"type": "text", "text": "\n\n".join(text_parts)},
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{doc_block['image']}"}}
-        ]
+    if is_pdf:
+        parts = [{"type": "text", "text": "\n\n".join(text_parts)}]
+        _add_pdf_parts(doc_block, parts)
+        return parts if len(parts) > 1 else parts[0]["text"]
     return "\n\n".join(text_parts)
 
 

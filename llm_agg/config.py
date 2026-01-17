@@ -31,8 +31,11 @@ class DocInfo(BaseModel):
     filename: str
     mime: str
     encoding: Literal["utf-8", "base64", "base64+zlib", "image", "pdf"]
-    content: str
-    pdf_image: Optional[str] = None  # Base64 encoded first page image for PDFs
+    content: str  # For text/image files; empty for PDFs using new fields
+    # PDF-specific fields (user can enable multiple)
+    pdf_raw: Optional[str] = None      # Base64 encoded raw PDF (send as-is)
+    pdf_text: Optional[str] = None     # Extracted text from PDF
+    pdf_pages: Optional[List[str]] = None  # Base64 encoded page images (all pages)
 
 
 class RunConfig(BaseModel):

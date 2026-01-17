@@ -31,30 +31,6 @@ def _get_mime(filename: str) -> str:
     return mime_map.get(ext, mimetypes.guess_type(filename)[0] or "application/octet-stream")
 
 
-def _extract_pdf_content(filepath: str) -> tuple[str, str]:
-    """Extract text and first page image from PDF using PyMuPDF."""
-    import fitz  # PyMuPDF
-
-    doc = fitz.open(filepath)
-
-    # Extract text from all pages
-    text_parts = []
-    for page in doc:
-        text_parts.append(page.get_text())
-    full_text = "\n\n".join(text_parts)
-
-    # Render first page as image
-    first_page = doc[0]
-    # Use 2x zoom for better quality
-    mat = fitz.Matrix(2, 2)
-    pix = first_page.get_pixmap(matrix=mat)
-    img_bytes = pix.tobytes("png")
-    img_b64 = base64.b64encode(img_bytes).decode("ascii")
-
-    doc.close()
-    return full_text, img_b64
-
-
 def _load_doc(filepath: str, doc_id: str) -> DocInfo:
     path = Path(filepath)
     data = path.read_bytes()
@@ -63,16 +39,15 @@ def _load_doc(filepath: str, doc_id: str) -> DocInfo:
 
     mime = _get_mime(path.name)
 
-    # Handle PDFs specially - extract text and render first page
+    # Handle PDFs - default to sending raw PDF for CLI
     if mime == "application/pdf":
-        text, img_b64 = _extract_pdf_content(filepath)
         return DocInfo(
             doc_id=doc_id,
             filename=path.name,
             mime=mime,
             encoding="pdf",
-            content=text,
-            pdf_image=img_b64,
+            content="",  # Not used for PDFs with new fields
+            pdf_raw=base64.b64encode(data).decode("ascii"),
         )
 
     try:

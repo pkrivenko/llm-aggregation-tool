@@ -81,45 +81,107 @@ def parse_questions(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if line.strip()]
 
 
-def extract_pdf_content(content_bytes: bytes) -> tuple[str, str]:
-    """Extract text and first page image from PDF using PyMuPDF."""
-    import fitz  # PyMuPDF
+def _get_max_dimension(quality: str) -> int:
+    """Extract max dimension from quality string, or 0 for original."""
+    if quality and "Original" in quality:
+        return 0  # No resize
+    quality_map = {
+        "Draft (512px)": 512,
+        "Standard (1024px)": 1024,
+        "High (1536px)": 1536,
+        "Maximum (2048px)": 2048,
+    }
+    for key, val in quality_map.items():
+        if quality and quality.startswith(key):
+            return val
+    return 1024  # Default
+
+
+def _resize_image_bytes(img_bytes: bytes, max_dim: int, output_format: str = "PNG") -> bytes:
+    """Resize image if larger than max_dim, preserving aspect ratio."""
+    if max_dim == 0:
+        return img_bytes  # Original, no resize
+
+    from PIL import Image
     import io
 
-    doc = fitz.open(stream=content_bytes, filetype="pdf")
+    img = Image.open(io.BytesIO(img_bytes))
+    w, h = img.size
 
-    # Extract text from all pages
-    text_parts = []
-    for page in doc:
-        text_parts.append(page.get_text())
-    full_text = "\n\n".join(text_parts)
+    # Only resize if image is larger than max_dim
+    if max(w, h) > max_dim:
+        if w > h:
+            new_w = max_dim
+            new_h = int(h * max_dim / w)
+        else:
+            new_h = max_dim
+            new_w = int(w * max_dim / h)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
 
-    # Render first page as image
-    first_page = doc[0]
-    mat = fitz.Matrix(2, 2)  # 2x zoom for better quality
-    pix = first_page.get_pixmap(matrix=mat)
-    img_bytes = pix.tobytes("png")
-    img_b64 = base64.b64encode(img_bytes).decode("ascii")
+    # Convert to RGB if needed (for JPEG)
+    if output_format.upper() == "JPEG" and img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
 
-    doc.close()
-    return full_text, img_b64
+    buf = io.BytesIO()
+    img.save(buf, format=output_format)
+    return buf.getvalue()
 
 
-def encode_file(uploaded_file) -> DocInfo:
+def encode_file(uploaded_file, pdf_modes: list[str] = None, image_quality: str = None) -> DocInfo:
     content_bytes = uploaded_file.read()
     filename = uploaded_file.name
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    max_dim = _get_max_dimension(image_quality)
 
-    # Handle PDFs specially - extract text and render first page
+    # Handle PDFs with user-selected modes
     if mime == "application/pdf":
-        text, img_b64 = extract_pdf_content(content_bytes)
+        if pdf_modes is None:
+            pdf_modes = ["Send PDF as-is"]
+
+        pdf_raw = None
+        pdf_text = None
+        pdf_pages = None
+
+        if "Send PDF as-is" in pdf_modes:
+            pdf_raw = base64.b64encode(content_bytes).decode("ascii")
+
+        if "Extract text only" in pdf_modes:
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=content_bytes, filetype="pdf")
+            text_parts = []
+            for page in doc:
+                text_parts.append(page.get_text())
+            pdf_text = "\n\n".join(text_parts)
+            doc.close()
+
+        if "Send as images (all pages)" in pdf_modes:
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=content_bytes, filetype="pdf")
+            pdf_pages = []
+
+            for page in doc:
+                # Render at high resolution first, then resize to target
+                # Use 3x zoom to get good base quality, then resize
+                mat = fitz.Matrix(3, 3)
+                pix = page.get_pixmap(matrix=mat)
+                img_bytes = pix.tobytes("png")
+
+                # Resize to target quality
+                if max_dim > 0:
+                    img_bytes = _resize_image_bytes(img_bytes, max_dim, "PNG")
+
+                pdf_pages.append(base64.b64encode(img_bytes).decode("ascii"))
+            doc.close()
+
         return DocInfo(
             doc_id=filename,
             filename=filename,
             mime=mime,
             encoding="pdf",
-            content=text,
-            pdf_image=img_b64
+            content="",  # Not used for PDFs with new fields
+            pdf_raw=pdf_raw,
+            pdf_text=pdf_text,
+            pdf_pages=pdf_pages,
         )
 
     try:
@@ -133,12 +195,20 @@ def encode_file(uploaded_file) -> DocInfo:
         )
     except UnicodeDecodeError:
         if mime.startswith("image/"):
+            # Resize image if quality setting specified
+            img_bytes = content_bytes
+            if max_dim > 0:
+                try:
+                    img_bytes = _resize_image_bytes(content_bytes, max_dim, "PNG")
+                    mime = "image/png"  # Resized images are converted to PNG
+                except Exception:
+                    pass  # Keep original if resize fails
             return DocInfo(
                 doc_id=filename,
                 filename=filename,
                 mime=mime,
                 encoding="image",
-                content=base64.b64encode(content_bytes).decode("ascii")
+                content=base64.b64encode(img_bytes).decode("ascii")
             )
         compressed = zlib.compress(content_bytes, level=9)
         return DocInfo(
@@ -158,7 +228,11 @@ def combine_documents(docs: list[DocInfo]) -> DocInfo:
         if doc.encoding == "utf-8":
             combined_parts.append(f"=== {doc.filename} ===\n{doc.content}")
         elif doc.encoding == "pdf":
-            combined_parts.append(f"=== {doc.filename} (PDF) ===\n{doc.content}")
+            # Use extracted text if available, otherwise note PDF is attached
+            if doc.pdf_text:
+                combined_parts.append(f"=== {doc.filename} (PDF) ===\n{doc.pdf_text}")
+            else:
+                combined_parts.append(f"=== {doc.filename} (PDF) ===\n[PDF content attached separately]")
         elif doc.encoding == "image":
             combined_parts.append(f"=== {doc.filename} (Image) ===\n[Image content - see original file]")
         else:
@@ -174,7 +248,6 @@ def combine_documents(docs: list[DocInfo]) -> DocInfo:
         mime="text/plain",
         encoding="utf-8",
         content=combined_content,
-        pdf_image=None
     )
 
 
@@ -236,15 +309,20 @@ def render_model_rows_editor(key_prefix: str, rows_key: str, catalog: list[dict]
 
 
 def build_model_rows(rows: list[dict], catalog: list[dict]) -> list[ModelRow]:
-    # Build lookup for per-model max_tokens from catalog
+    # Build lookups for per-model settings from catalog
     catalog_max_tokens = {m["id"]: m.get("max_tokens") for m in catalog}
+    catalog_default_temp = {m["id"]: m.get("default_temperature") for m in catalog}
 
     result = []
     for r in rows:
         if not r.get("model_id"):
             continue
-        temp = r.get("temperature") if r.get("use_temp") else None
-        max_tokens = catalog_max_tokens.get(r["model_id"])  # None if not in catalog or not set
+        # Use user's temperature if set, otherwise use model's default from catalog
+        if r.get("use_temp"):
+            temp = r.get("temperature")
+        else:
+            temp = catalog_default_temp.get(r["model_id"])  # e.g., 0.7 for Gemini
+        max_tokens = catalog_max_tokens.get(r["model_id"])
         result.append(ModelRow(
             model_id=r["model_id"],
             timeout_s=r["timeout_s"],
@@ -314,6 +392,43 @@ def main():
             if oversized_files:
                 st.error(f"Files exceed {MAX_FILE_SIZE // 1024}KB: {', '.join(oversized_files)}")
         st.caption(f"D = {max(1, docs_count)}")
+
+        # PDF mode selector (show if any PDF files uploaded)
+        has_pdfs = uploaded_files and any(f.name.lower().endswith(".pdf") for f in uploaded_files)
+        has_images = uploaded_files and any(
+            f.name.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
+            for f in uploaded_files
+        )
+        pdf_modes = ["Send PDF as-is"]  # default
+        image_quality = "Standard (1024px)"  # default for both PDFs and images
+
+        if has_pdfs:
+            pdf_modes = st.multiselect(
+                "PDF handling mode",
+                options=["Send PDF as-is", "Extract text only", "Send as images (all pages)"],
+                default=["Send PDF as-is"],
+                key="pdf_modes",
+                help="Select how to send PDFs to models. You can select multiple options."
+            )
+            if not pdf_modes:
+                st.warning("Select at least one PDF mode")
+
+        # Show image quality selector when images are uploaded OR PDF images mode is selected
+        needs_image_quality = has_images or (has_pdfs and "Send as images (all pages)" in pdf_modes)
+        if needs_image_quality:
+            image_quality = st.selectbox(
+                "Image quality" + (" (for PDFs and images)" if has_pdfs and has_images else ""),
+                options=[
+                    "Draft (512px) — ~30KB, fast, may miss fine details",
+                    "Standard (1024px) — ~100KB, good for most content",
+                    "High (1536px) — ~250KB, sharp text and details",
+                    "Maximum (2048px) — ~500KB, best quality, keeps fine print readable",
+                    "Original — no resize, send as-is",
+                ],
+                index=1,  # Default to Standard
+                key="image_quality",
+                help="Max dimension in pixels. Higher = sharper but larger file size and more tokens"
+            )
 
         # Combine documents option (only show when 2+ files)
         combine_docs = False
@@ -418,7 +533,7 @@ def main():
         if uploaded_files:
             for f in uploaded_files:
                 f.seek(0)
-                docs.append(encode_file(f))
+                docs.append(encode_file(f, pdf_modes, image_quality))
 
         # Combine documents if option is enabled and there are 2+ docs
         if combine_docs and len(docs) >= 2:

@@ -43,6 +43,37 @@ def _is_anthropic_model(model_id: str) -> bool:
     return model_id.startswith("anthropic/") or model_id.startswith("claude-")
 
 
+def _convert_messages_for_openai(messages: list[dict]) -> list[dict]:
+    """Convert messages to OpenAI format, including PDF support."""
+    converted = []
+    for msg in messages:
+        content = msg.get("content")
+        if isinstance(content, list):
+            converted_content = []
+            for item in content:
+                item_type = item.get("type")
+                if item_type in ("text", "image_url"):
+                    converted_content.append(item)
+                elif item_type == "document":
+                    # Convert Anthropic document format to OpenAI file format
+                    source = item.get("source", {})
+                    if source.get("type") == "base64":
+                        media_type = source.get("media_type", "application/pdf")
+                        data = source.get("data", "")
+                        converted_content.append({
+                            "type": "file",
+                            "file": {
+                                "file_data": f"data:{media_type};base64,{data}",
+                                "filename": "document.pdf"
+                            }
+                        })
+            if converted_content:
+                converted.append({**msg, "content": converted_content})
+        else:
+            converted.append(msg)
+    return converted
+
+
 def _convert_to_google_format(messages: list[dict]) -> list[dict]:
     """Convert OpenAI-style messages to Google Generative AI format."""
     contents = []
@@ -62,6 +93,16 @@ def _convert_to_google_format(messages: list[dict]) -> list[dict]:
             for item in content:
                 if item.get("type") == "text":
                     parts.append({"text": item.get("text", "")})
+                elif item.get("type") == "document":
+                    # Handle PDF/document uploads for Google API
+                    source = item.get("source", {})
+                    if source.get("type") == "base64":
+                        parts.append({
+                            "inline_data": {
+                                "mime_type": source.get("media_type", "application/pdf"),
+                                "data": source.get("data", "")
+                            }
+                        })
                 elif item.get("type") == "image_url":
                     image_url = item.get("image_url", {}).get("url", "")
                     if image_url.startswith("data:"):
@@ -226,9 +267,12 @@ async def _call_openai(
         "Content-Type": "application/json",
     }
 
+    # Convert messages to OpenAI format (including PDF support)
+    filtered_messages = _convert_messages_for_openai(messages)
+
     body = {
         "model": model_name,
-        "messages": messages,
+        "messages": filtered_messages,
         "max_completion_tokens": max_tokens,  # Newer OpenAI models use this instead of max_tokens
     }
     if temperature is not None:
@@ -287,6 +331,44 @@ async def _call_openai(
     return result
 
 
+def _convert_messages_for_anthropic(messages: list[dict]) -> list[dict]:
+    """Convert messages to Anthropic format (image_url -> image)."""
+    converted = []
+    for msg in messages:
+        content = msg.get("content")
+        if isinstance(content, list):
+            converted_content = []
+            for item in content:
+                item_type = item.get("type")
+                if item_type == "text":
+                    converted_content.append(item)
+                elif item_type == "document":
+                    # Anthropic native format - pass through
+                    converted_content.append(item)
+                elif item_type == "image_url":
+                    # Convert OpenAI image_url to Anthropic image format
+                    image_url = item.get("image_url", {}).get("url", "")
+                    if image_url.startswith("data:"):
+                        # Parse data URL: data:image/png;base64,<data>
+                        mime_end = image_url.find(";")
+                        data_start = image_url.find(",") + 1
+                        mime_type = image_url[5:mime_end] if mime_end > 5 else "image/png"
+                        base64_data = image_url[data_start:]
+                        converted_content.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime_type,
+                                "data": base64_data
+                            }
+                        })
+            if converted_content:
+                converted.append({**msg, "content": converted_content})
+        else:
+            converted.append(msg)
+    return converted
+
+
 async def _call_anthropic(
     messages: list[dict],
     model_id: str,
@@ -310,10 +392,11 @@ async def _call_anthropic(
     # Extract model name (e.g., "anthropic/claude-3-5-haiku-latest" -> "claude-3-5-haiku-latest")
     model_name = model_id.split("/")[-1] if "/" in model_id else model_id
 
-    # Extract system message if present
+    # Convert messages to Anthropic format and extract system message
+    converted_messages = _convert_messages_for_anthropic(messages)
     system_content = None
     api_messages = []
-    for msg in messages:
+    for msg in converted_messages:
         if msg.get("role") == "system":
             system_content = msg.get("content", "")
         else:
