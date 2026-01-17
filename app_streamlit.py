@@ -150,12 +150,56 @@ def encode_file(uploaded_file) -> DocInfo:
         )
 
 
+def combine_documents(docs: list[DocInfo]) -> DocInfo:
+    """Combine multiple documents into a single DocInfo."""
+    combined_parts = []
+
+    for doc in docs:
+        if doc.encoding == "utf-8":
+            combined_parts.append(f"=== {doc.filename} ===\n{doc.content}")
+        elif doc.encoding == "pdf":
+            combined_parts.append(f"=== {doc.filename} (PDF) ===\n{doc.content}")
+        elif doc.encoding == "image":
+            combined_parts.append(f"=== {doc.filename} (Image) ===\n[Image content - see original file]")
+        else:
+            combined_parts.append(f"=== {doc.filename} ===\n[Binary content]")
+
+    combined_content = "\n\n".join(combined_parts)
+    filenames = [d.filename for d in docs]
+    combined_name = f"Combined: {', '.join(filenames[:3])}{'...' if len(filenames) > 3 else ''}"
+
+    return DocInfo(
+        doc_id="__combined__",
+        filename=combined_name,
+        mime="text/plain",
+        encoding="utf-8",
+        content=combined_content,
+        pdf_image=None
+    )
+
+
 def render_model_rows_editor(key_prefix: str, rows_key: str, catalog: list[dict]):
     rows = st.session_state[rows_key]
     to_remove = None
 
+    # Header row for alignment
+    if rows:
+        header_cols = st.columns([3, 1, 1, 0.5, 1, 0.5])
+        with header_cols[0]:
+            st.caption("Model")
+        with header_cols[1]:
+            st.caption("Timeout(s)")
+        with header_cols[2]:
+            st.caption("Calls")
+        with header_cols[3]:
+            st.caption("Temp")
+        with header_cols[4]:
+            st.caption("T value")
+        with header_cols[5]:
+            st.caption("")
+
     for i, row in enumerate(rows):
-        cols = st.columns([3, 1, 1, 1, 1, 1, 0.5])
+        cols = st.columns([3, 1, 1, 0.5, 1, 0.5])
         with cols[0]:
             options = [m["id"] for m in catalog]
             current = row.get("model_id", "")
@@ -166,27 +210,27 @@ def render_model_rows_editor(key_prefix: str, rows_key: str, catalog: list[dict]
                 "Model", options, index=idx if options else 0,
                 key=f"{key_prefix}_model_{i}", label_visibility="collapsed"
             )
-            custom = st.text_input("Or custom model ID", value="" if selected else current, key=f"{key_prefix}_custom_{i}")
+            custom = st.text_input("Custom model ID", value="" if selected else current,
+                key=f"{key_prefix}_custom_{i}", label_visibility="collapsed", placeholder="Or enter custom ID")
             row["model_id"] = custom if custom else selected
         with cols[1]:
-            row["timeout_s"] = st.number_input("Timeout(s)", value=row.get("timeout_s", 30.0), min_value=0.1, key=f"{key_prefix}_timeout_{i}")
+            row["timeout_s"] = st.number_input("Timeout", value=row.get("timeout_s", 30.0), min_value=0.1,
+                key=f"{key_prefix}_timeout_{i}", label_visibility="collapsed")
         with cols[2]:
-            row["n_calls"] = st.number_input("N calls", value=row.get("n_calls", 1), min_value=1, key=f"{key_prefix}_ncalls_{i}")
+            row["n_calls"] = st.number_input("Calls", value=row.get("n_calls", 1), min_value=1,
+                key=f"{key_prefix}_ncalls_{i}", label_visibility="collapsed")
         with cols[3]:
-            row["use_temp"] = st.checkbox("Temp", value=row.get("use_temp", False), key=f"{key_prefix}_usetemp_{i}")
+            row["use_temp"] = st.checkbox("T", value=row.get("use_temp", False),
+                key=f"{key_prefix}_usetemp_{i}", label_visibility="collapsed")
         with cols[4]:
             if row["use_temp"]:
-                row["temperature"] = st.number_input("T", value=row.get("temperature", 1.0), min_value=0.0, max_value=2.0, key=f"{key_prefix}_temp_{i}")
+                row["temperature"] = st.number_input("T", value=row.get("temperature", 1.0), min_value=0.0, max_value=2.0,
+                    key=f"{key_prefix}_temp_{i}", label_visibility="collapsed")
         with cols[5]:
-            if st.button("Remove", key=f"{key_prefix}_remove_{i}"):
-                to_remove = i
-
-    if to_remove is not None:
-        rows.pop(to_remove)
-        st.rerun()
+            st.button("✕", key=f"{key_prefix}_remove_{i}", on_click=lambda idx=i: rows.pop(idx) or st.rerun())
 
     if len(rows) < MAX_MODEL_ROWS:
-        if st.button(f"Add model", key=f"{key_prefix}_add"):
+        if st.button("+ Add model", key=f"{key_prefix}_add"):
             rows.append({"model_id": "", "timeout_s": 30.0, "n_calls": 1, "use_temp": False, "temperature": 1.0})
             st.rerun()
 
@@ -211,8 +255,8 @@ def build_model_rows(rows: list[dict], catalog: list[dict]) -> list[ModelRow]:
     return result
 
 
-def compute_dry_run(questions: list[str], docs_count: int, doer_rows: list, judge_rows: list, final_rows: list, benchmark_enabled: bool, benchmark_mode: str):
-    D = max(1, docs_count)
+def compute_dry_run(questions: list[str], docs_count: int, doer_rows: list, judge_rows: list, final_rows: list, benchmark_enabled: bool, benchmark_mode: str, combine_docs: bool = False):
+    D = 1 if combine_docs and docs_count >= 2 else max(1, docs_count)
     Q = len(questions)
     doer_n = sum(r.get("n_calls", 1) for r in doer_rows if r.get("model_id"))
     judge_n = sum(r.get("n_calls", 1) for r in judge_rows if r.get("model_id"))
@@ -270,6 +314,16 @@ def main():
             if oversized_files:
                 st.error(f"Files exceed {MAX_FILE_SIZE // 1024}KB: {', '.join(oversized_files)}")
         st.caption(f"D = {max(1, docs_count)}")
+
+        # Combine documents option (only show when 2+ files)
+        combine_docs = False
+        if docs_count >= 2:
+            combine_docs = st.checkbox(
+                "Combine all documents into single context",
+                value=False,
+                key="combine_docs",
+                help="When enabled, all documents are merged into one combined context for each question"
+            )
 
         st.subheader("Doers")
         with st.expander("System Prompt", expanded=False):
@@ -330,7 +384,7 @@ def main():
             st.session_state.doer_rows,
             st.session_state.judge_rows,
             st.session_state.final_rows,
-            benchmark_enabled, benchmark_mode
+            benchmark_enabled, benchmark_mode, combine_docs
         )
         st.text(f"D = {dry_run['D']}, Q = {dry_run['Q']}")
         st.text(f"BaseCalls = {dry_run['base']}")
@@ -357,7 +411,7 @@ def main():
         if truth_mismatch:
             st.error(f"Ground truth lines ({len(ground_truths)}) must match questions ({len(questions)})")
 
-        run_clicked = st.button("Run", disabled=not can_run, key="run_btn")
+        run_clicked = st.button("Run", disabled=not can_run, key="run_btn", type="primary", use_container_width=True)
 
     if run_clicked and can_run:
         docs = []
@@ -365,6 +419,10 @@ def main():
             for f in uploaded_files:
                 f.seek(0)
                 docs.append(encode_file(f))
+
+        # Combine documents if option is enabled and there are 2+ docs
+        if combine_docs and len(docs) >= 2:
+            docs = [combine_documents(docs)]
 
         doers = build_model_rows(st.session_state.doer_rows, MODELS_CATALOG)
         judges = build_model_rows(st.session_state.judge_rows, MODELS_CATALOG)
