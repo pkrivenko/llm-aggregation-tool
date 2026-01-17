@@ -475,6 +475,36 @@ Each run produces:
 
 Maximum file size: **200 KB** (204,800 bytes)
 
+### Combine Documents Feature
+
+When uploading multiple files (2+), you can enable **"Combine all documents into single context"** to merge all documents into one combined context for each question.
+
+**How it works:**
+- All uploaded files are merged with clear separators (`=== filename ===`)
+- The pipeline runs once with the combined document instead of separately per file
+- Useful for questions that require information from multiple sources
+
+**Example combined output:**
+```
+=== sales_q1.txt ===
+Q1 Sales Report:
+- January: $10,000
+- February: $12,000
+...
+
+=== sales_q2.txt ===
+Q2 Sales Report:
+- April: $14,000
+...
+```
+
+**Use cases:**
+- Cross-document analysis ("What is the total across all reports?")
+- Comparing information from multiple sources
+- Synthesizing data from related documents
+
+**Dry run estimate:** When combining is enabled, D (document count) becomes 1 regardless of how many files are uploaded, reducing total API calls.
+
 ---
 
 ## Troubleshooting
