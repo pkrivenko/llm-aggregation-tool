@@ -8,8 +8,13 @@ A multi-stage pipeline for querying multiple Large Language Models (LLMs) and ag
 
 ```bash
 # Install dependencies
-pip install httpx pydantic streamlit PyMuPDF
+pip install -r requirements.txt
+
+# Or install manually:
+pip install streamlit httpx pydantic python-dotenv PyMuPDF Pillow
 ```
+
+> **Note:** `PyMuPDF` (fitz) is required for PDF text extraction and page rendering. `Pillow` is required for image resizing/quality options.
 
 ### API Key Setup (Secure)
 
@@ -165,17 +170,20 @@ ModelRow(
 
 ### RunConfig Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `questions` | required | List of questions to answer |
-| `docs` | `[]` | List of DocInfo objects |
-| `doers` | required | List of ModelRow for doer stage |
-| `judges` | `[]` | List of ModelRow for judge stage |
-| `final_judges` | `[]` | List of ModelRow for final stage |
-| `cap_total_calls` | 100 | Maximum total API calls (hard budget) |
-| `max_output_tokens` | 200 | Max tokens per response |
-| `retries` | 0 | Retries on non-timeout errors |
-| `max_concurrency` | 20 | Max parallel API requests |
+| Parameter | Code Default | UI Default | Description |
+|-----------|--------------|------------|-------------|
+| `questions` | required | - | List of questions to answer |
+| `docs` | `[]` | - | List of DocInfo objects (max 20) |
+| `doers` | `[]` | 1 row | List of ModelRow for doer stage (max 10) |
+| `judges` | `[]` | empty | List of ModelRow for judge stage (max 10) |
+| `final_judges` | `[]` | empty | List of ModelRow for final stage (max 10) |
+| `cap_total_calls` | 100 | 100 | Maximum total API calls (hard budget) |
+| `max_output_tokens` | 200 | 1000 | Max tokens per response |
+| `retries` | 0 | 0 | Retries on non-timeout errors |
+| `max_concurrency` | 1000 | 1000 | Max parallel API requests |
+| `debug_mode` | false | false | Enable detailed logging |
+
+> **Note:** UI defaults are configured in `settings.json` and may differ from code defaults in `config.py`.
 
 ### BenchmarkConfig Parameters
 
@@ -512,7 +520,7 @@ Images are resized proportionally (preserving aspect ratio) using high-quality L
 
 ### Document Size Limit
 
-Maximum file size: **200 KB** (204,800 bytes)
+Maximum file size: **20 MB** per file, up to **20 files** total (configurable in settings.json)
 
 ### Combine Documents Feature
 
@@ -692,6 +700,36 @@ All app configuration is stored in `settings.json`:
 ```
 
 Edit this file directly to customize defaults, add models, or modify system prompts.
+
+---
+
+## Available Models
+
+The following models are pre-configured in `settings.json`:
+
+| Model ID | Display Name | Max Tokens | Default Temp |
+|----------|--------------|------------|--------------|
+| `openai/gpt-5-nano` | GPT-5 Nano | 100,000 | - |
+| `openai/gpt-5-mini` | GPT-5 Mini | 100,000 | - |
+| `openai/gpt-5.2` | GPT-5.2 | 100,000 | - |
+| `google/gemini-3-flash-preview` | Gemini 3 Flash Preview | 64,000 | 0.7 |
+| `google/gemini-3-pro-preview` | Gemini 3 Pro Preview | 64,000 | 0.7 |
+| `anthropic/claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 64,000 | - |
+| `anthropic/claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 64,000 | - |
+| `anthropic/claude-opus-4-5-20251101` | Claude Opus 4.5 | 64,000 | - |
+
+You can also enter custom model IDs directly in the UI.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| `README.md` | This file - usage guide and reference |
+| `CLAUDE.md` | Development session learnings and challenges |
+| `REQUIREMENTS_STATUS.md` | Detailed requirements vs implementation status |
+| `summary.md` | Development history and architecture overview |
 
 ---
 
