@@ -7,7 +7,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from llm_agg.config import RunConfig, ModelRow, DocInfo, BenchmarkConfig, ScorerConfig, MAX_FILE_SIZE
+from llm_agg.config import RunConfig, ModelRow, DocInfo, BenchmarkConfig, ScorerConfig
 from llm_agg.runner import run_pipeline
 from llm_agg.stats import compute_stats
 from llm_agg.io import (
@@ -34,7 +34,7 @@ def load_settings():
         "global_controls": {"cap_total_calls": 100, "max_output_tokens": 1000, "retries": 0, "max_concurrency": 1000, "debug_mode": False},
         "pipeline_options": {"send_doc_to_judges": False, "send_doc_to_final_judges": False, "send_doer_responses_to_judges": True, "send_doer_outputs_to_final_judges": True, "send_judge_outputs_to_final_judges": True},
         "benchmark_defaults": {"enabled": False, "mode": "exact", "strip_whitespace": True, "scorer_model": None, "scorer_timeout_s": 30.0, "scorer_temperature": 0.0},
-        "ui": {"max_files": 10, "max_file_size_kb": 200, "max_model_rows": 10}
+        "ui": {"max_files": 20, "max_file_size_mb": 20, "max_model_rows": 10}
     }
 
 
@@ -48,7 +48,9 @@ PIPELINE_OPTIONS = SETTINGS.get("pipeline_options", {})
 BENCHMARK_DEFAULTS = SETTINGS.get("benchmark_defaults", {})
 UI_SETTINGS = SETTINGS.get("ui", {})
 
-MAX_FILES = UI_SETTINGS.get("max_files", 10)
+MAX_FILES = UI_SETTINGS.get("max_files", 20)
+MAX_FILE_SIZE_MB = UI_SETTINGS.get("max_file_size_mb", 20)
+MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # Convert to bytes
 MAX_MODEL_ROWS = UI_SETTINGS.get("max_model_rows", 10)
 
 
@@ -228,11 +230,21 @@ def combine_documents(docs: list[DocInfo]) -> DocInfo:
         if doc.encoding == "utf-8":
             combined_parts.append(f"=== {doc.filename} ===\n{doc.content}")
         elif doc.encoding == "pdf":
-            # Use extracted text if available, otherwise note PDF is attached
+            # Use extracted text if available, otherwise extract from raw PDF
             if doc.pdf_text:
                 combined_parts.append(f"=== {doc.filename} (PDF) ===\n{doc.pdf_text}")
+            elif doc.pdf_raw:
+                # Extract text on-the-fly for combining
+                import fitz
+                import base64
+                pdf_bytes = base64.b64decode(doc.pdf_raw)
+                pdf_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                text_parts = [page.get_text() for page in pdf_doc]
+                pdf_doc.close()
+                extracted = "\n\n".join(text_parts)
+                combined_parts.append(f"=== {doc.filename} (PDF) ===\n{extracted}")
             else:
-                combined_parts.append(f"=== {doc.filename} (PDF) ===\n[PDF content attached separately]")
+                combined_parts.append(f"=== {doc.filename} (PDF) ===\n[No text content available]")
         elif doc.encoding == "image":
             combined_parts.append(f"=== {doc.filename} (Image) ===\n[Image content - see original file]")
         else:
@@ -376,7 +388,7 @@ def main():
 
         st.subheader("Documents (optional)")
         uploaded_files = st.file_uploader(
-            f"Upload up to {MAX_FILES} files (max {MAX_FILE_SIZE // 1024}KB each)",
+            f"Upload up to {MAX_FILES} files (max {MAX_FILE_SIZE_MB}MB each)",
             accept_multiple_files=True, key="docs_uploader"
         )
         docs_count = len(uploaded_files) if uploaded_files else 0
@@ -384,13 +396,16 @@ def main():
         if uploaded_files:
             for f in uploaded_files:
                 size = f.size
-                st.caption(f"{f.name}: {size / 1024:.1f} KB")
+                if size >= 1024 * 1024:
+                    st.caption(f"{f.name}: {size / (1024 * 1024):.1f} MB")
+                else:
+                    st.caption(f"{f.name}: {size / 1024:.1f} KB")
                 if size > MAX_FILE_SIZE:
                     oversized_files.append(f.name)
             if len(uploaded_files) > MAX_FILES:
                 st.error(f"Too many files. Max {MAX_FILES}.")
             if oversized_files:
-                st.error(f"Files exceed {MAX_FILE_SIZE // 1024}KB: {', '.join(oversized_files)}")
+                st.error(f"Files exceed {MAX_FILE_SIZE_MB}MB: {', '.join(oversized_files)}")
         st.caption(f"D = {max(1, docs_count)}")
 
         # PDF mode selector (show if any PDF files uploaded)

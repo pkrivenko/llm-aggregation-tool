@@ -1,0 +1,54 @@
+{
+  "questions": ["What is the candidate's full name?", "What is their highest education level?"],
+  "docs": [],
+  "doers": [
+    {
+      "model_id": "google/gemini-2.0-flash-001",
+      "timeout_s": 60,
+      "n_calls": 1,
+      "temperature": null
+    },
+    {
+      "model_id": "openai/gpt-4o-mini",
+      "timeout_s": 60,
+      "n_calls": 1,
+      "temperature": 0.5
+    }
+  ],
+  "judges": [
+    {
+      "model_id": "google/gemini-2.0-flash-001",
+      "timeout_s": 60,
+      "n_calls": 1,
+      "temperature": null
+    }
+  ],
+  "final_judges": [
+    {
+      "model_id": "google/gemini-2.0-flash-001",
+      "timeout_s": 60,
+      "n_calls": 1,
+      "temperature": null
+    }
+  ],
+  "doer_system_prompt": "Answer concisely based on the document.",
+  "judge_system_prompt": "",
+  "final_system_prompt": "",
+  "send_doc_to_judges": true,
+  "send_doc_to_final_judges": true,
+  "send_doer_responses_to_judges": true,
+  "send_doer_outputs_to_final_judges": true,
+  "send_judge_outputs_to_final_judges": true,
+  "cap_total_calls": 100,
+  "max_output_tokens": 150,
+  "retries": 1,
+  "debug_mode": true,
+  "max_concurrency": 10,
+  "benchmark": {
+    "enabled": true,
+    "mode": "exact",
+    "strip_whitespace": true,
+    "scorer": null,
+    "ground_truths": ["Pavel Krivenko", "Ph.D. in Economics"]
+  }
+}

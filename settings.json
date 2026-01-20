@@ -51,8 +51,8 @@
   },
 
   "ui": {
-    "max_files": 10,
-    "max_file_size_kb": 200,
+    "max_files": 20,
+    "max_file_size_mb": 20,
     "max_model_rows": 10
   }
 }

@@ -1,0 +1,38 @@
+{
+  "questions": ["What is 2+2?"],
+  "docs": [],
+  "doers": [
+    {
+      "model_id": "google/gemini-2.0-flash-001",
+      "timeout_s": 30,
+      "n_calls": 2,
+      "temperature": null
+    }
+  ],
+  "judges": [],
+  "final_judges": [],
+  "doer_system_prompt": "",
+  "judge_system_prompt": "",
+  "final_system_prompt": "",
+  "send_doc_to_judges": false,
+  "send_doc_to_final_judges": false,
+  "send_doer_responses_to_judges": true,
+  "send_doer_outputs_to_final_judges": true,
+  "send_judge_outputs_to_final_judges": true,
+  "cap_total_calls": 200,
+  "max_output_tokens": 100,
+  "retries": 0,
+  "debug_mode": true,
+  "max_concurrency": 20,
+  "benchmark": {
+    "enabled": true,
+    "mode": "llm",
+    "strip_whitespace": true,
+    "scorer": {
+      "model_id": "google/gemini-2.0-flash-001",
+      "timeout_s": 30,
+      "temperature": 0.0
+    },
+    "ground_truths": ["4"]
+  }
+}
