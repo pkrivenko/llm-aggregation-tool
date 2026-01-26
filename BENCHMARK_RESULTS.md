@@ -1,154 +1,107 @@
-# Final Benchmark Results: ASAP vs Single Model
+# Benchmark Results: ASAP vs Single Model
 
-**Generated:** 2026-01-16 09:05:25
+**Date:** 2026-01-25 16:04:51
 
-**Iterations completed:**
-- Single Model: 100/100
-- ASAP: 100/100
+**Iterations per configuration:** 100
 
----
+**Scoring method:** LLM-based (Gemini judges correctness)
 
-## Configuration Parameters
+## Configuration
 
-### Model Settings
+### Single Model
+- Model: `google/gemini-3-flash-preview`
+- Doers: 1 call (temperature=0.5)
+- Judges: None
+- Final Judge: None
 
-| Parameter | Single Model | ASAP |
-|-----------|-------------|------|
-| **Model** | `google/gemini-2.0-flash-001` | `google/gemini-2.0-flash-001` |
+### ASAP (Aggregation System)
+- Model: `google/gemini-3-flash-preview`
+- Doers: 10 calls (temperature=0.7)
+- Judges: 5 calls (temperature=0.5)
+- Final Judge: 1 call (temperature=0.3)
 
-### Doer Stage
-
-| Parameter | Single Model | ASAP |
-|-----------|-------------|------|
-| Number of calls | 1 | 10 |
-| Temperature | 0.3 | 0.7 |
-| Timeout (sec) | 60 | 60 |
-
-### Judge Stage
-
-| Parameter | Single Model | ASAP |
-|-----------|-------------|------|
-| Enabled | No | Yes |
-| Number of calls | - | 5 |
-| Temperature | - | 0.3 |
-| Timeout (sec) | - | 60 |
-| Send doc to judges | - | Yes |
-| Send doer responses | - | Yes |
-
-### Final Judge Stage
-
-| Parameter | Single Model | ASAP |
-|-----------|-------------|------|
-| Enabled | No | Yes |
-| Number of calls | - | 1 |
-| Temperature | - | 0.0 |
-| Timeout (sec) | - | 60 |
-| Send doc to final | - | Yes |
-| Send doer outputs | - | Yes |
-| Send judge outputs | - | Yes |
-
-### Global Settings (Same for Both)
-
-| Parameter | Value |
-|-----------|-------|
-| Max output tokens | 300 |
-| Retries on failure | 1 |
-| Max concurrency | 10 |
-| Cap total calls | 500 (Single) / 2000 (ASAP) |
-
-### Scoring Settings
-
-| Parameter | Value |
-|-----------|-------|
-| Scoring mode | LLM-based (not exact match) |
-| Scorer model | `google/gemini-2.0-flash-001` |
-| Scorer temperature | 0.0 |
-| Scorer timeout | 30 sec |
-| Strip whitespace | Yes |
-
-### Test Data
-
-| Parameter | Value |
-|-----------|-------|
-| Documents | doc1.txt, doc2.pdf, doc3.jpg |
-| Questions | 11 (from Questions.md) |
-| Ground truths | Provided for all questions |
+> **Note:** These results may be from a previous benchmark run. Re-run `python3 benchmark_asap_vs_single.py` to generate fresh results with the current configuration.
 
 ---
 
 ## Overall Results
 
-| Configuration | Iterations | Average Success Rate |
-|--------------|------------|---------------------|
-| Single Model | 100 | **72.7%** |
-| ASAP         | 100 | **74.0%** |
-| **Difference** | - | **+1.3%** |
+| Configuration | Average Success Rate |
+|--------------|---------------------|
+| Single Model | 100.0% |
+| ASAP         | 68.1% |
+| **Improvement** | **-31.9%** |
 
 ---
 
 ## Results by Document
 
-| Document | Single Model | ASAP | Difference |
-|----------|-------------|------|------------|
-| doc1 | 100.0% | 100.0% | +0.0% |
-| doc2 | 91.0% | 94.8% | +3.8% |
-| doc3 | 27.3% | 27.3% | +0.0% |
+| Document | Single Model | ASAP | Improvement |
+|----------|-------------|------|-------------|
+| doc1 (doc1.txt) | 100.0% | 87.5% | -12.5% |
+| doc2 (doc2.pdf) | 0.0% | 94.1% | +94.1% |
+| doc3 (doc3.jpg) | 0.0% | 21.7% | +21.7% |
 
 ---
 
 ## Results by Question
 
-| Q# | Single Model | ASAP | Difference |
-|----|-------------|------|------------|
-| Q1 | 100.0% | 100.0% | +0.0% |
-| Q2 | 100.0% | 100.0% | +0.0% |
-| Q3 | 100.0% | 100.0% | +0.0% |
-| Q4 | 66.7% | 66.7% | +0.0% |
-| Q5 | 66.7% | 66.7% | +0.0% |
-| Q6 | 66.7% | 66.7% | +0.0% |
-| Q7 | 66.7% | 66.7% | +0.0% |
-| Q8 | 66.7% | 66.7% | +0.0% |
-| Q9 | 66.7% | 66.7% | +0.0% |
-| Q10 | 33.8% | 47.7% | +13.9% |
-| Q11 | 66.3% | 66.7% | +0.3% |
+| Q# | Question (truncated) | Single Model | ASAP | Improvement |
+|----|---------------------|-------------|------|-------------|
+| Q1 | Respond with full name of the candidate. In consis... | 100.0% | 100.0% | +0.0% |
+| Q2 | How many years of experience does Pavel state in t... | 100.0% | 100.0% | +0.0% |
+| Q3 | What's his highest level of education? Include onl... | 0.0% | 100.0% | +100.0% |
+| Q4 | What was his position at Central Bank of Russia? | 0.0% | 83.3% | +83.3% |
+| Q5 | Which Cloud Platform does he use? respond with one... | 0.0% | 71.4% | +71.4% |
+| Q6 | List all the structural methods mentioned | 0.0% | 75.0% | +75.0% |
+| Q7 | in which journal did he publish a paper titled Ass... | 0.0% | 50.0% | +50.0% |
+| Q8 | What's the title of his research paper that docume... | 0.0% | 33.3% | +33.3% |
+| Q9 | Who is his coauthor on a research paper that uses ... | 0.0% | 75.0% | +75.0% |
+| Q10 | How many distinct coauthors does he have? Ignore f... | 0.0% | 14.3% | +14.3% |
+| Q11 | In his education business, he lists some revenue n... | 0.0% | 61.5% | +61.5% |
 
 ---
 
-## Detailed Results Matrix
+## Detailed Results by Document and Question
 
-### Single Model Success Rates
+### Single Model Results
 
-| Doc \ Q | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
+| Doc \ Question | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| doc1 | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | **100%** |
-| doc2 | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 2% | 99% | **91%** |
+| doc1 | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | **18%** |
+| doc2 | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | **0%** |
+| doc3 | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | **0%** |
+
+### ASAP Results
+
+| Doc \ Question | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| doc1 | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | **91%** |
+| doc2 | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 50% | 100% | **77%** |
 | doc3 | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | **27%** |
 
-### ASAP Success Rates
+### Improvement (ASAP - Single Model)
 
-| Doc \ Q | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
+| Doc \ Question | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| doc1 | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | **100%** |
-| doc2 | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 43% | 100% | **95%** |
-| doc3 | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | **27%** |
-
-### Improvement (ASAP - Single)
-
-| Doc \ Q | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Avg |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| doc1 | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | **+0%** |
-| doc2 | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +41% | +1% | **+4%** |
-| doc3 | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | **+0%** |
+| doc1 | +0% | +0% | +100% | +100% | +100% | +100% | +100% | +100% | +100% | +0% | +100% | **+73%** |
+| doc2 | +100% | +0% | +100% | +100% | +100% | +100% | +0% | +100% | +100% | +50% | +100% | **+77%** |
+| doc3 | +100% | +100% | +100% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | +0% | **+27%** |
 
 ---
 
 ## Summary
 
-**ASAP shows a +1.3% improvement over single model overall.**
+Single model shows a **31.9%** advantage over ASAP.
 
-Key findings:
-- **Q10 on doc2**: ASAP shows +41% improvement (2% → 43%), the most significant gain
-- **doc2 overall**: ASAP improves accuracy by +4% (91% → 95%)
-- **doc1 and doc3**: No difference between methods (100% and 27% respectively)
+### Key Observations
 
-The ASAP multi-stage aggregation approach provides modest but consistent improvements, with the most benefit on questions where the single model struggles.
+- **Largest improvement:** doc1, Q3 with +100.0%
+- **Largest regression:** doc3, Q11 with +0.0%
+
+---
+
+## Data Files
+
+- **Detailed responses:** `benchmark_detailed_data.jsonl` (JSONL format with all model responses)
+- **Summary stats:** `benchmark_raw_results.json`

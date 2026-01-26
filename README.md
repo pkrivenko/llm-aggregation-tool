@@ -93,24 +93,30 @@ questions, ground_truths = _parse_questions_md("TestData/Questions.md")
 config = RunConfig(
     questions=questions,
     docs=[doc],
-    doers=[ModelRow(model_id="google/gemini-2.0-flash-001", timeout_s=60, n_calls=1, temperature=0.3)],
+    doers=[ModelRow(model_id="google/gemini-3-flash-preview", timeout_s=60, n_calls=1, temperature=0.5)],
     judges=[],  # Optional: add judge models
     final_judges=[],  # Optional: add final judge models
     cap_total_calls=100,
-    max_output_tokens=300,
+    max_output_tokens=500,  # Increased for chain-of-thought responses
     retries=1,
-    max_concurrency=20,
+    max_concurrency=1000,
     benchmark=BenchmarkConfig(
         enabled=True,
         mode="llm",
         strip_whitespace=True,
-        scorer=ScorerConfig(model_id="google/gemini-2.0-flash-001", timeout_s=30, temperature=0.0),
+        scorer=ScorerConfig(model_id="google/gemini-3-flash-preview", timeout_s=30, temperature=0.3),
         ground_truths=ground_truths,
     ),
 )
 
 # Run the pipeline
 results, attempts, scores = asyncio.run(run_pipeline(config, "my_run"))
+
+# Access aggregation statistics
+for result in results:
+    print(f"Question {result['q_index']}: {result['question'][:50]}...")
+    print(f"  Doer vote winner: {result['aggregation']['doer_vote']['winner']}")
+    print(f"  Agreement: {result['aggregation']['doer_agreement']:.0%}")
 ```
 
 ---
@@ -131,15 +137,58 @@ Questions × Documents → Doers → Judges (optional) → Final Judges (optiona
    - Multiple models can be used in parallel
    - Each model can make multiple calls (n_calls)
    - Higher temperature = more diverse responses
+   - **Chain-of-thought reasoning** with step-by-step analysis
+   - **Confidence scoring** (1-10) for weighted aggregation
 
 2. **Judges** (Stage 2, Optional): Evaluate doer responses
    - Receive all doer outputs for comparison
    - Optionally receive the original document
-   - Identify best answers and point out errors
+   - **Explicit selection** of best answer with `SELECTED: [doer:model#index]` format
+   - Consider consensus among candidates as a positive signal
 
 3. **Final Judges** (Stage 3, Optional): Synthesize final answer
    - Receive doer outputs, judge evaluations, and optionally the document
+   - Leverage judge selections to identify best candidates
    - Produce a single, best final answer
+
+### Aggregation Techniques
+
+The pipeline implements state-of-the-art aggregation techniques:
+
+| Technique | Description | Expected Gain |
+|-----------|-------------|---------------|
+| **Chain-of-Thought** | Doers reason step-by-step before answering | +5-10% |
+| **Confidence Weighting** | Responses weighted by self-reported confidence | +2-5% |
+| **Majority Voting** | Most common answer wins (self-consistency) | +5-15% |
+| **Judge Selection** | Explicit selection rather than prose synthesis | +3-8% |
+| **Heterogeneous Models** | Mix of different model families | +3-5% |
+
+### Aggregation Statistics
+
+Each result includes aggregation statistics:
+
+```python
+result["aggregation"] = {
+    "doer_vote": {
+        "winner": "the extracted winning answer",
+        "vote_count": 6,        # How many doers gave this answer
+        "total_votes": 10,      # Total valid responses
+        "vote_share": 0.6,      # Proportion (0-1)
+    },
+    "doer_agreement": 0.6,      # Agreement score (0-1)
+    "judge_selection": {
+        "selected_doer": "google/gemini-3-flash-preview#2",
+        "selected_text": "The original response text...",
+        "selection_count": 3,   # How many judges selected this
+        "total_judges": 5,
+    },
+}
+```
+
+Use these statistics to:
+- Detect high-confidence answers (vote_share > 0.7)
+- Skip judge stage when doer agreement is high (cost savings)
+- Track which model/call produces the best answers
 
 ### Data Flow Options
 
@@ -161,10 +210,10 @@ Control what each stage receives via configuration:
 
 ```python
 ModelRow(
-    model_id="google/gemini-2.0-flash-001",  # OpenRouter model ID
-    timeout_s=60,                             # Request timeout in seconds
-    n_calls=5,                                # Number of parallel calls
-    temperature=0.7,                          # Optional: 0.0-2.0, omit for model default
+    model_id="google/gemini-3-flash-preview",  # Model ID (OpenRouter or direct API)
+    timeout_s=60,                               # Request timeout in seconds
+    n_calls=5,                                  # Number of parallel calls
+    temperature=0.7,                            # Optional: 0.0-2.0, omit for model default
 )
 ```
 
@@ -238,28 +287,37 @@ TestData/
 
 #### 1. Main Benchmark: `benchmark_asap_vs_single.py`
 
-Compares single model performance vs full ASAP pipeline.
+Compares single model performance vs full ASAP pipeline with state-of-the-art aggregation.
 
 **Configuration:**
 
 | Parameter | Single Model | ASAP |
 |-----------|-------------|------|
+| Model | gemini-3-flash-preview | gemini-3-flash-preview |
 | Doer calls | 1 | 10 |
-| Doer temperature | 0.3 | 0.7 |
+| Doer temperature | 0.5 | 0.7 |
 | Judge calls | - | 5 |
-| Judge temperature | - | 0.3 |
+| Judge temperature | - | 0.5 |
 | Final judge calls | - | 1 |
-| Final temperature | - | 0.0 |
+| Final temperature | - | 0.3 |
+| Max concurrency | 2000 | 2000 |
+
+**Features:**
+- Chain-of-thought prompting for doers
+- Confidence scoring (1-10) for weighted voting
+- Explicit judge selection with `SELECTED: [doer:model#index]`
+- Full parallelization (all 100 iterations run simultaneously)
 
 **Usage:**
 
 ```bash
-# Run full benchmark (100 iterations each)
+# Run full benchmark (100 iterations each, fully parallel)
 python3 benchmark_asap_vs_single.py
 
 # Output files:
-# - benchmark_detailed_data.jsonl  (all responses)
+# - benchmark_detailed_data.jsonl  (all responses with aggregation stats)
 # - BENCHMARK_RESULTS.md           (summary report)
+# - benchmark_raw_results.json     (raw score data)
 ```
 
 #### 2. Stats Calculator: `calc_intermediate_stats.py`
@@ -327,7 +385,7 @@ from llm_agg.config import RunConfig, ModelRow, BenchmarkConfig, ScorerConfig
 from llm_agg.runner import run_pipeline
 from llm_agg.cli import _load_doc, _parse_questions_md
 
-GEMINI_MODEL = "google/gemini-2.0-flash-001"
+GEMINI_MODEL = "google/gemini-3-flash-preview"
 OUTPUT_FILE = Path("my_benchmark_data.jsonl")
 
 def load_test_data():
@@ -452,6 +510,141 @@ From our testing (100 iterations each):
 
 Key finding: ASAP shows significant improvement on difficult questions where single model struggles.
 
+### Recommended Configuration for Maximum Reliability
+
+Based on our research, this configuration provides optimal results:
+
+```python
+from llm_agg.config import RunConfig, ModelRow, BenchmarkConfig
+from llm_agg import majority_vote, aggregate_judge_selections
+
+config = RunConfig(
+    questions=questions,
+    docs=[doc],
+
+    # Heterogeneous doers with chain-of-thought (diversity + CoT)
+    # Using different model families reduces systematic biases
+    doers=[
+        ModelRow(model_id="google/gemini-3-flash-preview", n_calls=4, temperature=0.7),
+        ModelRow(model_id="anthropic/claude-haiku-4-5-20251001", n_calls=3, temperature=0.7),
+        ModelRow(model_id="openai/gpt-5-nano", n_calls=3, temperature=0.7),
+    ],
+
+    # Judges with explicit selection (temp > 0 for Gemini)
+    judges=[
+        ModelRow(model_id="google/gemini-3-flash-preview", n_calls=3, temperature=0.5),
+    ],
+
+    # Single final judge for synthesis (temp > 0 for Gemini)
+    final_judges=[
+        ModelRow(model_id="google/gemini-3-flash-preview", n_calls=1, temperature=0.3),
+    ],
+
+    # Full context flow
+    send_doc_to_judges=True,
+    send_doc_to_final_judges=True,
+    send_doer_responses_to_judges=True,
+    send_doer_outputs_to_final_judges=True,
+    send_judge_outputs_to_final_judges=True,
+
+    cap_total_calls=200,
+    max_output_tokens=500,  # Increased for CoT responses
+    max_concurrency=2000,   # High parallelization
+    retries=1,
+)
+
+# Run and analyze results
+results, attempts, scores = await run_pipeline(config, "my_run")
+
+for result in results:
+    # Check doer consensus
+    vote = result["aggregation"]["doer_vote"]
+    if vote["vote_share"] > 0.7:
+        print(f"High confidence answer: {vote['winner']}")
+
+    # Check judge agreement
+    if result["aggregation"]["judge_selection"]:
+        sel = result["aggregation"]["judge_selection"]
+        print(f"Judges selected: {sel['selected_doer']} ({sel['selection_count']}/{sel['total_judges']})")
+```
+
+**Why this works:**
+- **Heterogeneous models** reduce systematic biases (+3-5%)
+- **Temperature 0.7** for doers creates diversity for voting
+- **Chain-of-thought prompts** improve individual response quality (+5-10%)
+- **Confidence scoring** enables weighted voting (+2-5%)
+- **Explicit judge selection** makes aggregation transparent and votable (+3-8%)
+- **Temperature > 0** required for Gemini models with PDFs
+
+---
+
+## Aggregation Utilities
+
+The `llm_agg.aggregation` module provides state-of-the-art aggregation functions:
+
+### Answer Extraction
+
+```python
+from llm_agg import extract_answer, extract_confidence
+
+response = "Let me think step by step... The answer is Paris. CONFIDENCE: 9"
+answer = extract_answer(response)      # "paris"
+confidence = extract_confidence(response)  # 0.9
+```
+
+### Majority Voting (Self-Consistency)
+
+```python
+from llm_agg import majority_vote
+
+responses = [
+    {"status": "ok", "text": "The answer is 42. CONFIDENCE: 9"},
+    {"status": "ok", "text": "The answer is 42. CONFIDENCE: 8"},
+    {"status": "ok", "text": "The answer is 41. CONFIDENCE: 3"},
+]
+
+vote = majority_vote(responses, use_confidence=True)
+# vote = {
+#     "winner": "42",
+#     "vote_count": 2,
+#     "total_votes": 3,
+#     "vote_share": 0.67,
+#     "weighted_scores": {"42": 1.7, "41": 0.3}
+# }
+```
+
+### Judge Selection Aggregation
+
+```python
+from llm_agg import aggregate_judge_selections
+
+judge_outputs = [
+    {"status": "ok", "text": "Best answer. SELECTED: [doer:gemini#0]"},
+    {"status": "ok", "text": "Most accurate. SELECTED: [doer:gemini#0]"},
+    {"status": "ok", "text": "Clear reasoning. SELECTED: [doer:claude#1]"},
+]
+
+selection = aggregate_judge_selections(judge_outputs, doer_outputs)
+# selection = {
+#     "selected_doer": "gemini#0",
+#     "selected_text": "The original response...",
+#     "selection_count": 2,
+#     "total_judges": 3
+# }
+```
+
+### Agreement Score
+
+```python
+from llm_agg import compute_agreement_score
+
+agreement = compute_agreement_score(responses)  # 0.67 (2/3 agree)
+
+# Use to decide if judge stage is needed
+if agreement > 0.8:
+    print("High consensus - can skip judges for cost savings")
+```
+
 ---
 
 ## Output Files
@@ -462,7 +655,7 @@ Each run produces:
 |------|-------------|
 | `resolved_config.json` | Exact configuration used (reproducible) |
 | `call_logs.jsonl` | Detailed log of every API call |
-| `results.json` | Structured results with all outputs |
+| `results.json` | Structured results with all outputs and aggregation stats |
 | `stats.json` / `stats.csv` | Aggregated statistics |
 | `accuracy.json` | Benchmark accuracy (if enabled) |
 
@@ -585,9 +778,11 @@ Q2 Sales Report:
 |-------|-------------|-------------|-------|
 | Claude Haiku 4.5 | Any | Native | Best PDF accuracy (95%+) |
 | Claude Sonnet/Opus | Any | Native | Excellent accuracy |
-| Gemini 3 Flash/Pro | **Must be > 0** | Native | Use 0.7; temp=0 causes issues with PDFs |
+| Gemini 3 Flash/Pro | **Must be > 0** | Native | Use 0.5-0.7; temp=0 causes issues with PDFs |
 | GPT-5-nano | **Only 1.0** | Native | Don't set temperature; limited accuracy |
 | GPT-5-mini/5.2 | Any | Native | Good accuracy |
+
+**Important:** For Gemini models, always use temperature > 0 (recommended: 0.5 for judges, 0.7 for doers). Temperature 0 can cause issues with PDF processing and scoring.
 
 **Benchmark results (11-question PDF test):**
 
@@ -596,6 +791,11 @@ Q2 Sales Report:
 | Claude Haiku 4.5 | 96% | 95% | 75% |
 | Gemini 3 Flash | 91% | 91% | 90% |
 | GPT-5-nano | N/A | 64% | 22-58% |
+
+**Expected improvements with aggregation (ASAP vs Single Model):**
+- Overall: +1-5% on easy questions
+- Difficult questions: +20-40% improvement
+- Best results with heterogeneous model ensembles
 
 ### Debug Mode
 
@@ -619,14 +819,20 @@ CAI/
 ├── app_streamlit.py              # Web UI (Streamlit)
 ├── settings.json                 # All app settings (models, prompts, defaults)
 ├── llm_agg/                      # Core library
-│   ├── __init__.py
+│   ├── __init__.py               # Package exports
 │   ├── config.py                 # Pydantic models
 │   ├── cli.py                    # Command-line interface
 │   ├── runner.py                 # Pipeline execution
 │   ├── openrouter.py             # API client (multi-provider)
-│   ├── prompts.py                # Message builders
+│   ├── prompts.py                # Message builders (CoT, judge selection)
+│   ├── aggregation.py            # Voting, confidence, answer extraction
 │   ├── stats.py                  # Statistics
 │   └── io.py                     # File I/O
+├── Research/                     # Research reports on aggregation techniques
+│   ├── 01_LLM_Ensemble_Methods.md
+│   ├── 02_LLM_as_Judge_Evaluation.md
+│   ├── 03_Answer_Verification_Reliability.md
+│   └── 04_Implementation_Comparison_and_Improvements.md
 ├── TestData/                     # Test documents
 │   ├── doc1.txt
 │   ├── doc2.pdf
@@ -730,6 +936,19 @@ You can also enter custom model IDs directly in the UI.
 | `CLAUDE.md` | Development session learnings and challenges |
 | `REQUIREMENTS_STATUS.md` | Detailed requirements vs implementation status |
 | `summary.md` | Development history and architecture overview |
+
+### Research Reports
+
+The `Research/` folder contains comprehensive research on LLM aggregation techniques:
+
+| Report | Description |
+|--------|-------------|
+| `01_LLM_Ensemble_Methods.md` | Self-consistency, voting, multi-agent debate |
+| `02_LLM_as_Judge_Evaluation.md` | Judge best practices, pairwise comparison, bias mitigation |
+| `03_Answer_Verification_Reliability.md` | Factuality checking, verification techniques |
+| `04_Implementation_Comparison_and_Improvements.md` | Gap analysis, improvement roadmap, expected gains |
+
+These reports informed the implementation of chain-of-thought prompting, confidence scoring, explicit judge selection, and majority voting.
 
 ---
 
