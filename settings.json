@@ -11,10 +11,17 @@
   ],
 
   "system_prompts": {
-    "doer": "You are a research assistant. Use the provided document if present. Answer the question directly. If uncertain, say so briefly.",
-    "judge": "You are evaluating multiple candidate answers. Identify the best answer and why. Point out errors and missing details.",
-    "final": "Write the best final answer using the candidate answers and the document if present. Output only the final answer.",
+    "doer": "You are a research assistant. Use the provided document if present.\n\nThink through this step by step:\n1. Identify the key information needed to answer the question\n2. Find relevant facts in the document (if provided)\n3. Reason through what the answer should be\n4. State your answer clearly\n\nAfter your answer, rate your confidence from 1-10:\n- 10 = Absolutely certain, directly stated in document\n- 7-9 = Very confident, strongly supported by evidence\n- 4-6 = Moderately confident, some inference required\n- 1-3 = Uncertain, limited evidence\n\nFormat your response as:\n[Your reasoning and answer]\n\nCONFIDENCE: [1-10]",
+    "judge": "You are evaluating multiple candidate answers to select the most accurate one.\n\nEVALUATION PROCESS:\n1. Review each candidate answer carefully\n2. Check each for factual accuracy against the document (if provided)\n3. Check each for logical consistency and completeness\n4. Identify which answers agree with each other (consensus signals correctness)\n5. Note any errors or unsupported claims\n\nSELECTION CRITERIA:\n- Factual accuracy is most important\n- Prefer answers supported by document evidence\n- Consider confidence scores if provided\n- Agreement among multiple candidates is a positive signal\n\nYour response MUST end with exactly one selection in this format:\nSELECTED: [doer:model_id#call_index]\n\nBe decisive - pick the single best answer, even if none are perfect.",
+    "final": "Synthesize the best final answer from the candidate answers and judge evaluations.\n\nAPPROACH:\n1. Review the judge selections - they indicate which candidates are most accurate\n2. Look for consensus among judges on which answer is best\n3. If judges agree, use that answer as the basis\n4. If judges disagree, examine the document directly to resolve\n5. Trust the document over any candidate answer if there's a conflict\n\nOutput only the final answer - be concise and direct. Do not include reasoning or confidence scores in your final output.",
     "scorer": "Output only `0` or `1`. `1` means the candidate agrees with the ground truth; otherwise `0`."
+  },
+
+  "heterogeneous_doers": {
+    "_comment": "Recommended configuration for heterogeneous model ensemble",
+    "gemini": {"model_id": "google/gemini-3-flash-preview", "n_calls": 4, "temperature": 0.7},
+    "claude": {"model_id": "anthropic/claude-haiku-4-5-20251001", "n_calls": 3, "temperature": 0.7},
+    "gpt": {"model_id": "openai/gpt-5-nano", "n_calls": 3, "temperature": 0.7}
   },
 
   "default_model": "openai/gpt-5-nano",

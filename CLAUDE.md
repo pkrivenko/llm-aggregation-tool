@@ -157,6 +157,73 @@ q_labels = {0: "Q10", 1: "Q11"}  # New index -> original label
 
 ---
 
+### 7. State-of-the-Art Aggregation Improvements
+
+**Problem:** Initial implementation lacked explicit voting mechanisms and relied entirely on judge synthesis, missing potential +15-25% accuracy gains from established techniques.
+
+**Research Findings:**
+- Self-consistency (majority voting) provides +6-18% on reasoning tasks
+- Chain-of-thought prompting provides +5-10%
+- Confidence-weighted voting provides +2-5%
+- Heterogeneous model ensembles reduce systematic bias (+3-5%)
+
+**Solution:** Implemented Phase 1 improvements:
+
+1. **Chain-of-thought doer prompts** - Step-by-step reasoning before answering
+2. **Confidence scoring** - Doers report confidence (1-10) for weighted voting
+3. **Explicit judge selection** - Judges must output `SELECTED: [doer:model#index]`
+4. **Aggregation utilities** - New `aggregation.py` module with:
+   - `extract_answer()` - Parse final answer from verbose response
+   - `extract_confidence()` - Parse confidence score
+   - `majority_vote()` - Self-consistency voting with optional confidence weighting
+   - `aggregate_judge_selections()` - Count judge votes for doers
+   - `compute_agreement_score()` - Measure consensus among responses
+
+**Expected Impact:**
+- +8-15% from prompt changes alone (CoT + explicit selection)
+- +5-10% from voting mechanism when implemented in scoring
+- Better interpretability through aggregation statistics
+
+**Files affected:** `llm_agg/prompts.py`, `llm_agg/runner.py`, `llm_agg/aggregation.py`, `settings.json`
+
+**See also:** `Research/04_Implementation_Comparison_and_Improvements.md` for full analysis
+
+---
+
+### 8. Benchmark Parallelization and Model Updates
+
+**Problem:** Original benchmark was slow due to sequential iteration execution and low concurrency.
+
+**Issues identified:**
+- `max_concurrency=10` instead of 1000+
+- Iterations ran in sequential for-loop instead of parallel `asyncio.gather()`
+- Using deprecated model `google/gemini-2.0-flash-001`
+- Temperature=0 for scorer caused issues with Gemini
+
+**Solution:**
+1. Updated model to `google/gemini-3-flash-preview`
+2. Increased `max_concurrency` to 2000
+3. Changed to fully parallel iteration execution with `asyncio.gather()`
+4. Set temperature > 0 for all Gemini calls (0.5 for judges/scorers, 0.7 for doers)
+5. Increased `max_output_tokens` to 500 for chain-of-thought responses
+
+**Configuration changes:**
+```python
+# Before
+GEMINI_MODEL = "google/gemini-2.0-flash-001"
+max_concurrency = 10
+# Sequential: for i in range(100): await run_iteration(...)
+
+# After
+GEMINI_MODEL = "google/gemini-3-flash-preview"
+max_concurrency = 2000
+# Parallel: await asyncio.gather(*[run_iteration(i) for i in range(100)])
+```
+
+**Files affected:** `benchmark_asap_vs_single.py`
+
+---
+
 ## Async Patterns Used
 
 ### Concurrency Control

@@ -10,6 +10,10 @@ from .prompts import (
     build_doc_block, build_doer_user_message, build_judge_user_message,
     build_final_user_message, build_scorer_user_message,
 )
+from .aggregation import (
+    majority_vote, aggregate_judge_selections, compute_agreement_score,
+    extract_answer, extract_confidence,
+)
 
 
 class BudgetCounter:
@@ -218,6 +222,12 @@ async def _run_for_doc_question(
         all_attempts.extend(final_attempts)
 
     primary = final_outputs if config.final_judges else doer_outputs
+
+    # Compute aggregation statistics
+    doer_vote = majority_vote(doer_outputs, use_confidence=True)
+    doer_agreement = compute_agreement_score(doer_outputs)
+    judge_selection = aggregate_judge_selections(judge_outputs, doer_outputs) if judge_outputs else None
+
     result_item = {
         "doc_id": doc_id,
         "q_index": q_index,
@@ -226,6 +236,21 @@ async def _run_for_doc_question(
         "judges": judge_outputs,
         "finals": final_outputs,
         "primary_outputs": primary,
+        "aggregation": {
+            "doer_vote": {
+                "winner": doer_vote["winner"],
+                "vote_count": doer_vote["vote_count"],
+                "total_votes": doer_vote["total_votes"],
+                "vote_share": doer_vote["vote_share"],
+            },
+            "doer_agreement": doer_agreement,
+            "judge_selection": {
+                "selected_doer": judge_selection["selected_doer"] if judge_selection else None,
+                "selected_text": judge_selection["selected_text"] if judge_selection else None,
+                "selection_count": judge_selection["selection_count"] if judge_selection else 0,
+                "total_judges": judge_selection["total_judges"] if judge_selection else 0,
+            } if judge_selection else None,
+        },
     }
     return result_item, all_attempts
 

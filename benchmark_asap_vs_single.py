@@ -21,8 +21,9 @@ from llm_agg.config import RunConfig, DocInfo, ModelRow, BenchmarkConfig, Scorer
 from llm_agg.runner import run_pipeline
 from llm_agg.cli import _load_doc, _parse_questions_md
 
-GEMINI_MODEL = "google/gemini-2.0-flash-001"
+GEMINI_MODEL = "google/gemini-3-flash-preview"  # Updated to current model
 NUM_ITERATIONS = 100
+MAX_CONCURRENCY = 2000  # High concurrency for maximum parallelization
 
 # File to store ALL detailed responses
 DETAILED_DATA_FILE = Path("benchmark_detailed_data.jsonl")
@@ -53,14 +54,14 @@ def create_single_model_config(docs, questions, ground_truths):
         questions=questions,
         docs=docs,
         doers=[
-            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=1, temperature=0.3)
+            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=1, temperature=0.5)  # temp>0 for Gemini PDF support
         ],
         judges=[],  # No judges
         final_judges=[],  # No final judges
         cap_total_calls=500,  # Enough for all questions * docs + scoring
-        max_output_tokens=300,
+        max_output_tokens=500,  # Increased for CoT responses
         retries=1,
-        max_concurrency=10,
+        max_concurrency=MAX_CONCURRENCY,
         benchmark=BenchmarkConfig(
             enabled=True,
             mode="llm",  # Use LLM (Gemini) for scoring, not string match
@@ -68,7 +69,7 @@ def create_single_model_config(docs, questions, ground_truths):
             scorer=ScorerConfig(
                 model_id=GEMINI_MODEL,
                 timeout_s=30,
-                temperature=0.0,
+                temperature=0.3,  # temp>0 for Gemini
             ),
             ground_truths=ground_truths,
         ),
@@ -84,10 +85,10 @@ def create_asap_config(docs, questions, ground_truths):
             ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=10, temperature=0.7)
         ],
         judges=[
-            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=5, temperature=0.3)
+            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=5, temperature=0.5)  # temp>0 for Gemini
         ],
         final_judges=[
-            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=1, temperature=0.0)
+            ModelRow(model_id=GEMINI_MODEL, timeout_s=60, n_calls=1, temperature=0.3)  # temp>0 for Gemini
         ],
         send_doc_to_judges=True,
         send_doc_to_final_judges=True,
@@ -95,9 +96,9 @@ def create_asap_config(docs, questions, ground_truths):
         send_doer_outputs_to_final_judges=True,
         send_judge_outputs_to_final_judges=True,
         cap_total_calls=2000,  # Enough for 10+5+1 calls per question*doc + scoring
-        max_output_tokens=300,
+        max_output_tokens=500,  # Increased for CoT responses
         retries=1,
-        max_concurrency=10,
+        max_concurrency=MAX_CONCURRENCY,
         benchmark=BenchmarkConfig(
             enabled=True,
             mode="llm",  # Use LLM (Gemini) for scoring, not string match
@@ -105,7 +106,7 @@ def create_asap_config(docs, questions, ground_truths):
             scorer=ScorerConfig(
                 model_id=GEMINI_MODEL,
                 timeout_s=30,
-                temperature=0.0,
+                temperature=0.3,  # temp>0 for Gemini
             ),
             ground_truths=ground_truths,
         ),
@@ -248,32 +249,48 @@ def compute_averages(score_matrix, questions, docs):
     return results
 
 
+async def run_single_benchmark_iteration(name, config_creator, docs, questions, ground_truths, iteration):
+    """Run a single benchmark iteration and return results."""
+    config = config_creator(docs, questions, ground_truths)
+    run_id = f"{name.lower().replace(' ', '_')}_{iteration:03d}"
+
+    results, attempts, scores = await run_single_iteration(config, run_id)
+    primary_scores = extract_primary_scores(scores, config)
+
+    # Save detailed data for this iteration
+    save_detailed_record(name, iteration, results, scores, questions, ground_truths)
+
+    return primary_scores
+
+
 async def run_benchmark(name, config_creator, docs, questions, ground_truths, num_iterations):
-    """Run benchmark for given configuration."""
+    """Run benchmark for given configuration with full parallelization."""
     print(f"\n{'='*60}", flush=True)
-    print(f"Running {name} Benchmark ({num_iterations} iterations)", flush=True)
+    print(f"Running {name} Benchmark ({num_iterations} iterations in parallel)", flush=True)
     print(f"{'='*60}", flush=True)
 
+    # Create all iteration tasks
+    tasks = [
+        run_single_benchmark_iteration(name, config_creator, docs, questions, ground_truths, i)
+        for i in range(num_iterations)
+    ]
+
+    # Run all iterations in parallel
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Process results
     all_scores = []
+    success_count = 0
+    error_count = 0
 
-    for i in range(num_iterations):
-        config = config_creator(docs, questions, ground_truths)
-        run_id = f"{name.lower().replace(' ', '_')}_{i:03d}"
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            error_count += 1
+        else:
+            all_scores.append(result)
+            success_count += 1
 
-        try:
-            results, attempts, scores = await run_single_iteration(config, run_id)
-            primary_scores = extract_primary_scores(scores, config)
-            all_scores.append(primary_scores)
-
-            # Save detailed data for this iteration
-            save_detailed_record(name, i, results, scores, questions, ground_truths)
-
-            # Progress update every iteration
-            print(f"  [{i + 1}/{num_iterations}] completed", flush=True)
-
-        except Exception as e:
-            print(f"  [{i + 1}/{num_iterations}] ERROR: {e}", flush=True)
-            continue
+    print(f"  Completed: {success_count} successful, {error_count} errors", flush=True)
 
     # Compute averages
     score_matrix = compute_score_matrix(all_scores, questions, docs)

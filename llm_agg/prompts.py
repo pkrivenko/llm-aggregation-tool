@@ -1,8 +1,52 @@
 from typing import Optional, Union
 
-DOER_DEFAULT = "You are a research assistant. Use the provided document if present. Answer the question directly. If uncertain, say so briefly."
-JUDGE_DEFAULT = "You are evaluating multiple candidate answers. Identify the best answer and why. Point out errors and missing details."
-FINAL_DEFAULT = "Write the best final answer using the candidate answers and the document if present. Output only the final answer."
+DOER_DEFAULT = """You are a research assistant. Use the provided document if present.
+
+Think through this step by step:
+1. Identify the key information needed to answer the question
+2. Find relevant facts in the document (if provided)
+3. Reason through what the answer should be
+4. State your answer clearly
+
+After your answer, rate your confidence from 1-10:
+- 10 = Absolutely certain, directly stated in document
+- 7-9 = Very confident, strongly supported by evidence
+- 4-6 = Moderately confident, some inference required
+- 1-3 = Uncertain, limited evidence
+
+Format your response as:
+[Your reasoning and answer]
+
+CONFIDENCE: [1-10]"""
+JUDGE_DEFAULT = """You are evaluating multiple candidate answers to select the most accurate one.
+
+EVALUATION PROCESS:
+1. Review each candidate answer carefully
+2. Check each for factual accuracy against the document (if provided)
+3. Check each for logical consistency and completeness
+4. Identify which answers agree with each other (consensus signals correctness)
+5. Note any errors or unsupported claims
+
+SELECTION CRITERIA:
+- Factual accuracy is most important
+- Prefer answers supported by document evidence
+- Consider confidence scores if provided
+- Agreement among multiple candidates is a positive signal
+
+Your response MUST end with exactly one selection in this format:
+SELECTED: [doer:model_id#call_index]
+
+Be decisive - pick the single best answer, even if none are perfect."""
+FINAL_DEFAULT = """Synthesize the best final answer from the candidate answers and judge evaluations.
+
+APPROACH:
+1. Review the judge selections - they indicate which candidates are most accurate
+2. Look for consensus among judges on which answer is best
+3. If judges agree, use that answer as the basis
+4. If judges disagree, examine the document directly to resolve
+5. Trust the document over any candidate answer if there's a conflict
+
+Output only the final answer - be concise and direct. Do not include reasoning or confidence scores in your final output."""
 SCORER_DEFAULT = "Output only `0` or `1`. `1` means the candidate agrees with the ground truth; otherwise `0`."
 
 
